@@ -1,8 +1,6 @@
 apply from: "${project.rootDir}/config/gradle/android-library-config.gradle"
-apply plugin: 'com.jakewharton.butterknife'
 
 android {
-    def buildNumber = (System.getenv('BUILD_NUMBER') == null ? 0 : System.getenv('BUILD_NUMBER')) as int
     def gitBranch = (System.getenv('GIT_BRANCH') == null ? 'local' : System.getenv('GIT_BRANCH').replace('origin/', ''))
     def releaseType = (System.getenv('RELEASE_TYPE') == null ? 'NONE' : System.getenv('RELEASE_TYPE'))
     def updateUrls = (System.getenv('UPDATE_URLS') == null ? '"http://localhost/android-update.json"' : System.getenv('UPDATE_URLS'))
@@ -10,13 +8,15 @@ android {
     defaultConfig {
         minSdkVersion rootProject.ext.minSdk
         targetSdkVersion rootProject.ext.targetSdk
-        buildConfigField 'Integer', 'BUILD_NUMBER', '' + buildNumber + ''
+        multiDexEnabled true
+        vectorDrawables.useSupportLibrary = true
+
         buildConfigField 'String', 'GIT_BRANCH', '\"' + gitBranch + '\"'
         buildConfigField 'String', 'RELEASE_TYPE', '\"' + releaseType + '\"'
         buildConfigField 'String[]', 'UPDATE_URLS', '{' + updateUrls + '}'
-        versionCode buildNumber
-        multiDexEnabled true
-        vectorDrawables.useSupportLibrary = true
+
+        // Features
+        buildConfigField 'boolean', 'FEATURE_MOBILE_BEAM', getProperty("butter.config.feature.mobile.beam")
     }
 
     buildTypes {
@@ -31,44 +31,38 @@ android {
         lintConfig file('lint.xml')
     }
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
 }
 
 dependencies {
-    api "com.android.support:support-v4:$appCompatVersion"
-    api "com.android.support:palette-v7:$appCompatVersion"
-    api "com.android.support:appcompat-v7:$appCompatVersion"
-    api "com.android.support:design:$appCompatVersion"
+    api 'androidx.palette:palette:1.0.0-rc01'
+    api 'androidx.appcompat:appcompat:1.0.0-rc01'
+    api 'androidx.annotation:annotation:1.0.0-rc01'
+    api 'com.google.android.material:material:1.0.0-rc01'
 
     debugImplementation 'com.github.simonpercic:oklog3:2.2.0'
-    debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5.4'
 
-    releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.5.4'
-
-    api 'com.jakewharton.timber:timber:4.6.0'
+    api 'com.jakewharton.timber:timber:4.7.0'
     api "com.squareup.okhttp3:okhttp:$okHttpVersion"
-    api 'com.squareup.picasso:picasso:2.5.2'
-    api 'com.jakewharton.picasso:picasso2-okhttp3-downloader:1.1.0'
     api "com.google.code.gson:gson:$gsonVersion"
     api "com.jakewharton:butterknife:$butterknifeVersion"
-    api "com.github.gabrielemariotti.changeloglib:changelog:${changeloglibVersion}"
-    api 'com.jakewharton.threetenabp:threetenabp:1.0.5'
+    api "com.github.gabrielemariotti.changeloglib:changelog:$changeloglibVersion"
+    api 'com.jakewharton.threetenabp:threetenabp:1.1.0'
     api 'com.koushikdutta.async:androidasync:2.1.9'
-    api "com.github.TorrentStream:TorrentStream-Android:${torrentstreamVersion}"
+    api "org.butterproject.torrentstream:torrent-stream:$torrentstreamVersion"
 
     implementation 'de.timroes:aXMLRPC:1.8.1'
     api "com.google.dagger:dagger:$daggerVersion"
     api "com.google.dagger:dagger-android:$daggerVersion"
     api "com.google.dagger:dagger-android-support:$daggerVersion"
 
-    api 'com.butterproject:vlc-android-sdk:2.5.17'
+    api "com.github.bumptech.glide:glide:$glideVersion"
+    api "com.github.bumptech.glide:okhttp3-integration:$glideVersion"
 
-    api project(':connectsdk:core')
-    api project(':connectsdk:modules:firetv')
-    api project(':connectsdk:modules:google_cast')
+    api 'com.butterproject:vlc-android-sdk:3.0.10'
+
+    api project(':connectsdk:core') // TODO should be implementation
+    implementation project(':connectsdk:modules:firetv')
+    implementation project(':connectsdk:modules:google_cast')
 
     api project(':provider:media:provider')
     api project(':provider:media:vodo')
@@ -76,10 +70,13 @@ dependencies {
 
     api project(':provider:subs:provider')
     api project(':provider:subs:mock')
+    api project(':provider:subs:opensubs')
 
     annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"
     annotationProcessor "com.google.dagger:dagger-android-processor:$daggerVersion"
     annotationProcessor "com.jakewharton:butterknife-compiler:$butterknifeVersion"
+    annotationProcessor "com.github.bumptech.glide:compiler:$glideVersion"
 
     compileOnly "javax.annotation:javax.annotation-api:$javaxAnnotationVersion"
+
 }

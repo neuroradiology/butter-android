@@ -19,17 +19,23 @@ package butter.droid.tv.ui.player.video;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.StringRes;
 import android.widget.Toast;
-import butter.droid.base.providers.media.model.StreamInfo;
-import butter.droid.tv.R;
-import butter.droid.tv.ui.player.abs.TVAbsPlayerFragment;
-import com.github.se_bastiaan.torrentstream.StreamStatus;
-import com.github.se_bastiaan.torrentstream.Torrent;
-import com.github.se_bastiaan.torrentstream.listeners.TorrentListener;
-import dagger.android.support.AndroidSupportInjection;
+
+import org.butterproject.torrentstream.StreamStatus;
+import org.butterproject.torrentstream.Torrent;
+import org.butterproject.torrentstream.listeners.TorrentListener;
+
 import javax.inject.Inject;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import butter.droid.base.providers.media.model.MediaWrapper;
+import butter.droid.base.providers.media.model.StreamInfo;
+import butter.droid.base.ui.player.stream.StreamPlayerPresenterImpl;
+import butter.droid.provider.subs.model.Subtitle;
+import butter.droid.tv.ui.player.abs.TVAbsPlayerFragment;
+import dagger.android.support.AndroidSupportInjection;
 
 public class TVPlayerFragment extends TVAbsPlayerFragment implements TVPlayerView, TorrentListener {
 
@@ -49,7 +55,8 @@ public class TVPlayerFragment extends TVAbsPlayerFragment implements TVPlayerVie
         StreamInfo streamInfo = getArguments().getParcelable(ARG_STREAM_INFO);
         long resumePosition = getResumePosition(savedInstanceState);
 
-        stateBuilder.addCustomAction(PlayerMediaControllerGlue.ACTION_CLOSE_CAPTION, getString(R.string.subtitles), R.drawable.ic_av_subs);
+//        stateBuilder.addCustomAction(PlayerMediaControllerGlue.ACTION_CLOSE_CAPTION, getString(R.string.subtitles),
+// R.drawable.ic_av_subs);
 
         presenter.onCreate(streamInfo, resumePosition);
     }
@@ -67,8 +74,8 @@ public class TVPlayerFragment extends TVAbsPlayerFragment implements TVPlayerVie
         // TODO: 5/7/17 - will be implemented later
     }
 
-    @Override public void showPickSubsDialog(final String[] readableNames, final String[] adapterSubtitles, final String currentSubsLang) {
-        // TODO: 5/7/17 - will be implemented later
+    @Override public void showPickSubsDialog(MediaWrapper mediaWrapper, @Nullable Subtitle subtitle) {
+        // TODO
     }
 
     @Override public void showSubsFilePicker() {
@@ -79,14 +86,14 @@ public class TVPlayerFragment extends TVAbsPlayerFragment implements TVPlayerVie
         // TODO: 5/7/17 - will be implemented later
     }
 
-    @Override protected boolean onCustomAction(final String action, final Bundle extras) {
+    @Override protected boolean onCustomAction(final int action) {
         switch (action) {
-            case PlayerMediaControllerGlue.ACTION_CLOSE_CAPTION:
+            case StreamPlayerPresenterImpl.PLAYER_ACTION_CC:
                 presenter.onSubsClicked();
                 tickle();
                 return true;
             default:
-                return super.onCustomAction(action, extras);
+                return super.onCustomAction(action);
         }
     }
 

@@ -22,23 +22,22 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Resources;
 import android.net.Uri;
-import android.support.annotation.CallSuper;
-import android.support.annotation.NonNull;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
 import butter.droid.base.Constants;
 import butter.droid.base.R;
 import butter.droid.base.content.preferences.PrefItem;
 import butter.droid.base.content.preferences.PreferencesHandler;
 import butter.droid.base.content.preferences.Prefs;
 import butter.droid.base.content.preferences.Prefs.PrefKey;
-import butter.droid.base.manager.prefs.PrefManager;
-import butter.droid.base.manager.internal.updater.ButterUpdateManager;
 import butter.droid.base.manager.internal.vlc.PlayerManager;
+import butter.droid.base.manager.prefs.PrefManager;
 import butter.droid.base.utils.LocaleUtils;
 import timber.log.Timber;
 
@@ -49,29 +48,25 @@ public abstract class BasePreferencesPresenterImpl implements OnSharedPreference
     private final PrefManager prefManager;
     private final PlayerManager playerManager;
     private final PreferencesHandler preferencesHandler;
-    private final ButterUpdateManager updateManager;
     private final Resources resources;
 
     protected final String[] keys;
     private final String[] providers;
     private final int[] qualities;
     private final String[] appLanguages;
-    private final String[] subsLanguages;
 
     public BasePreferencesPresenterImpl(BasePreferencesView view, PrefManager prefManager, PlayerManager playerManager,
-            PreferencesHandler preferencesHandler, ButterUpdateManager updateManager, Resources resources,
+            PreferencesHandler preferencesHandler, Resources resources,
             boolean isTV) {
         this.view = view;
         this.prefManager = prefManager;
         this.playerManager = playerManager;
         this.preferencesHandler = preferencesHandler;
-        this.updateManager = updateManager;
         this.resources = resources;
 
         keys = preferencesHandler.getPreferencesOrder(isTV);
         providers = resources.getStringArray(R.array.prefs_providers);
         qualities = resources.getIntArray(R.array.video_qualities);
-        subsLanguages = resources.getStringArray(R.array.subtitle_languages);
         appLanguages = resources.getStringArray(R.array.translation_languages);
         Arrays.sort(appLanguages);
     }
@@ -128,7 +123,7 @@ public abstract class BasePreferencesPresenterImpl implements OnSharedPreference
                 if (position == 0) {
                     prefManager.remove(key);
                 } else {
-                    prefManager.save(key, subsLanguages[position - 1]);
+                    prefManager.save(key, PreferenceConstants.SUBS_LANGS[position - 1]);
                 }
                 break;
             default:
@@ -270,10 +265,10 @@ public abstract class BasePreferencesPresenterImpl implements OnSharedPreference
             case Prefs.PIXEL_FORMAT:
                 updatePixelFormat(item);
                 break;
-            case Prefs.CHECK_UPDATE:
-                updateManager.checkUpdatesManually();
-                view.showMessage(R.string.checking_for_updates);
-                break;
+//            case Prefs.CHECK_UPDATE:
+//                updateManager.checkUpdatesManually();
+//                view.showMessage(R.string.checking_for_updates);
+//                break;
             case Prefs.REPORT_BUG:
                 Intent i = new Intent(Intent.ACTION_VIEW);
                 i.setData(Uri.parse(Constants.REPORT_ISSUE_URL));
@@ -338,13 +333,13 @@ public abstract class BasePreferencesPresenterImpl implements OnSharedPreference
         int currentPosition = 0;
         String currentValue = (String) item.getValue();
 
-        String[] items = new String[subsLanguages.length + 1];
+        String[] items = new String[PreferenceConstants.SUBS_LANGS.length + 1];
         items[0] = resources.getString(R.string.no_default_set);
 
-        for (int i = 0; i < subsLanguages.length; i++) {
-            Locale locale = LocaleUtils.toLocale(subsLanguages[i]);
+        for (int i = 0; i < PreferenceConstants.SUBS_LANGS.length; i++) {
+            Locale locale = LocaleUtils.toLocale(PreferenceConstants.SUBS_LANGS[i]);
             items[i + 1] = locale.getDisplayLanguage();
-            if (subsLanguages[i].equals(currentValue)) {
+            if (PreferenceConstants.SUBS_LANGS[i].equals(currentValue)) {
                 currentPosition = i + 1;
             }
         }

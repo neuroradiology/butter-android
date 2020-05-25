@@ -18,35 +18,39 @@
 package butter.droid.tv.ui.detail.base;
 
 import android.graphics.Bitmap;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.support.annotation.StringRes;
-import android.support.v17.leanback.app.DetailsSupportFragment;
-import android.support.v17.leanback.app.DetailsSupportFragmentBackgroundController;
-import android.support.v17.leanback.widget.AbstractDetailsDescriptionPresenter;
-import android.support.v17.leanback.widget.Action;
-import android.support.v17.leanback.widget.ArrayObjectAdapter;
-import android.support.v17.leanback.widget.ClassPresenterSelector;
-import android.support.v17.leanback.widget.DetailsOverviewRow;
-import android.support.v17.leanback.widget.FullWidthDetailsOverviewRowPresenter;
-import android.support.v17.leanback.widget.FullWidthDetailsOverviewSharedElementHelper;
-import android.support.v17.leanback.widget.ListRow;
-import android.support.v17.leanback.widget.ListRowPresenter;
-import android.support.v17.leanback.widget.OnActionClickedListener;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import androidx.leanback.app.DetailsSupportFragment;
+import androidx.leanback.app.DetailsSupportFragmentBackgroundController;
+import androidx.leanback.widget.AbstractDetailsDescriptionPresenter;
+import androidx.leanback.widget.Action;
+import androidx.leanback.widget.ArrayObjectAdapter;
+import androidx.leanback.widget.ClassPresenterSelector;
+import androidx.leanback.widget.DetailsOverviewRow;
+import androidx.leanback.widget.FullWidthDetailsOverviewRowPresenter;
+import androidx.leanback.widget.FullWidthDetailsOverviewSharedElementHelper;
+import androidx.leanback.widget.ListRow;
+import androidx.leanback.widget.ListRowPresenter;
+import androidx.leanback.widget.OnActionClickedListener;
+
+import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.request.transition.Transition;
+
+import javax.inject.Inject;
+
+import butter.droid.base.manager.internal.glide.GlideApp;
 import butter.droid.base.providers.media.model.MediaWrapper;
 import butter.droid.tv.presenters.MediaDetailsDescriptionPresenter;
 import butter.droid.tv.ui.detail.TVMediaDetailActivity;
-import com.squareup.picasso.Picasso;
-import com.squareup.picasso.Picasso.LoadedFrom;
-import com.squareup.picasso.Target;
-import javax.inject.Inject;
 
 public abstract class TVBaseDetailsFragment extends DetailsSupportFragment implements TVBaseDetailView, OnActionClickedListener {
 
     protected static final String EXTRA_ITEM = "butter.droid.tv.ui.detail.base.TVBaseDetailsFragment.item";
 
     @Inject TVBaseDetailsPresenter presenter;
-    @Inject Picasso picasso;
 
     private final DetailsSupportFragmentBackgroundController detailsBackground =
             new DetailsSupportFragmentBackgroundController(this);
@@ -66,7 +70,7 @@ public abstract class TVBaseDetailsFragment extends DetailsSupportFragment imple
         super.onDestroy();
 
         presenter.onDestroy();
-        picasso.cancelRequest(detailsImageTarget);
+        GlideApp.with(this).clear(detailsImageTarget);
     }
 
     @Override public void initData(final MediaWrapper item) {
@@ -138,21 +142,16 @@ public abstract class TVBaseDetailsFragment extends DetailsSupportFragment imple
     }
 
     private void updateDetailImage(final MediaWrapper item) {
-        picasso.load(item.getMedia().getPoster())
+        GlideApp.with(this)
+                .asBitmap()
+                .load(item.getMedia().getPoster())
                 .into(detailsImageTarget);
     }
 
-    private final Target detailsImageTarget = new Target() {
-        @Override public void onBitmapLoaded(final Bitmap bitmap, final LoadedFrom from) {
-            detailsRow.setImageBitmap(getActivity(), bitmap);
-        }
-
-        @Override public void onBitmapFailed(final Drawable errorDrawable) {
-            // nothing to do
-        }
-
-        @Override public void onPrepareLoad(final Drawable placeHolderDrawable) {
-            // nothing to do
+    private final Target<Bitmap> detailsImageTarget = new SimpleTarget<Bitmap>() {
+        @Override
+        public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+            detailsRow.setImageBitmap(requireActivity(), resource);
         }
     };
 

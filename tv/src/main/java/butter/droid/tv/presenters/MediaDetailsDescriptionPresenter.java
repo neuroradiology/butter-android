@@ -17,7 +17,7 @@
 
 package butter.droid.tv.presenters;
 
-import android.support.v17.leanback.widget.AbstractDetailsDescriptionPresenter;
+import androidx.leanback.widget.AbstractDetailsDescriptionPresenter;
 import butter.droid.base.providers.media.model.MediaWrapper;
 import butter.droid.provider.base.filter.Genre;
 import butter.droid.provider.base.model.Media;
@@ -30,18 +30,6 @@ public class MediaDetailsDescriptionPresenter extends AbstractDetailsDescription
         if (itemWrapper != null) {
             Media media = itemWrapper.getMedia();
             viewHolder.getTitle().setText(media.getTitle());
-
-            Genre[] genres = media.getGenres();
-            if (genres.length > 0) {
-                StringBuffer genresText = new StringBuffer();
-                for (int i = 0; i < genres.length; i++) {
-                    if (i != 0) {
-                        genresText.append(", ");
-                    }
-                    genresText.append(genres[i].getName());
-                }
-            }
-
             viewHolder.getBody().setText(media.getSynopsis());
         }
     }

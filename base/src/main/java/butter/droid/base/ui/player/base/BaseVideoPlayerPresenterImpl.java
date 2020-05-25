@@ -19,7 +19,8 @@ package butter.droid.base.ui.player.base;
 
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
+
 import butter.droid.base.content.preferences.PreferencesHandler;
 import butter.droid.base.manager.internal.vlc.VlcPlayer;
 import butter.droid.base.manager.internal.vlc.VlcPlayer.PlayerCallback;
@@ -32,6 +33,7 @@ public abstract class BaseVideoPlayerPresenterImpl implements BaseVideoPlayerPre
     private final VlcPlayer player;
 
     private long resumePosition;
+    private long resumePositionSetter = -1;
 
     public BaseVideoPlayerPresenterImpl(final BaseVideoPlayerView view, final PreferencesHandler preferencesHandler,
             final VlcPlayer player) {
@@ -41,16 +43,16 @@ public abstract class BaseVideoPlayerPresenterImpl implements BaseVideoPlayerPre
     }
 
     protected void onCreate(final long resumePosition) {
-        if (!player.initialize()) {
+        try {
+            player.initialize();
+        } catch (IllegalStateException e) {
             view.close();
             Timber.e("Error initializing media player");
             return;
         }
 
         player.setCallback(this);
-
         this.resumePosition = resumePosition;
-
     }
 
     @Override public void onResume() {
@@ -94,12 +96,18 @@ public abstract class BaseVideoPlayerPresenterImpl implements BaseVideoPlayerPre
         view.showOverlay();
     }
 
-    @Override public void seekForwardClick() {
-        seek(10000);
-    }
+    @Override public void seekTo(final long pos) {
+        if (player.getLength() <= 0) {
+            return;
+        }
 
-    @Override public void seekBackwardClick() {
-        seek(-10000);
+        long position = pos;
+        if (pos < 0) {
+            position = 0;
+        }
+
+        setCurrentTime(position);
+        view.showOverlay();
     }
 
     /**
@@ -112,7 +120,7 @@ public abstract class BaseVideoPlayerPresenterImpl implements BaseVideoPlayerPre
         player.loadMedia(uri, ha);
 
         if (resumePosition > 0) {
-            player.setTime(resumePosition);
+            resumePositionSetter = resumePosition;
         }
 
         player.play();
@@ -164,6 +172,10 @@ public abstract class BaseVideoPlayerPresenterImpl implements BaseVideoPlayerPre
     }
 
     @Override public void playing() {
+        if (resumePositionSetter > 0) {
+            player.setTime(resumePositionSetter);
+            resumePositionSetter = -1;
+        }
         updateControls();
         view.setKeepScreenOn(true);
         view.setProgressVisible(false);

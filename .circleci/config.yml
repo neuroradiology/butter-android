@@ -1,0 +1,100 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/code
+    docker:
+      - image: circleci/android:api-28-alpha
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+      GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError"'
+    steps:
+      - checkout
+      - restore_cache:
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "base/build.gradle" }}-{{ checksum  "mobile/build.gradle" }}-{{ checksum  "tv/build.gradle" }}-{{ checksum  "provider/media/base/build.gradle" }}-{{ checksum  "provider/media/mock/build.gradle" }}-{{ checksum  "provider/media/provider/build.gradle" }}-{{ checksum  "provider/media/vodo/build.gradle" }}-{{ checksum  "provider/subs/provider/build.gradle" }}-{{ checksum  "provider/subs/mock/build.gradle" }}-{{ checksum  "connectsdk/core/build.gradle" }}-{{ checksum  "connectsdk/modules/firetv/build.gradle" }}-{{ checksum  "connectsdk/modules/google_cast/build.gradle" }}
+      - run:
+          name: Download Dependencies
+          command: ./gradlew androidDependencies
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "base/build.gradle" }}-{{ checksum  "mobile/build.gradle" }}-{{ checksum  "tv/build.gradle" }}-{{ checksum  "provider/media/base/build.gradle" }}-{{ checksum  "provider/media/mock/build.gradle" }}-{{ checksum  "provider/media/provider/build.gradle" }}-{{ checksum  "provider/media/vodo/build.gradle" }}-{{ checksum  "provider/subs/provider/build.gradle" }}-{{ checksum  "provider/subs/mock/build.gradle" }}-{{ checksum  "connectsdk/core/build.gradle" }}-{{ checksum  "connectsdk/modules/firetv/build.gradle" }}-{{ checksum  "connectsdk/modules/google_cast/build.gradle" }}
+      - run:
+          name: Run Tests
+          command: ./gradlew check
+
+  release_artifacts:
+    working_directory: ~/code
+    docker:
+      - image: circleci/android:api-28-alpha
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+      GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError"'
+    steps:
+      - checkout
+      - run:
+          name: Set signing key
+          command: config/ci/download_keystore.sh
+      - run:
+          name: Set play store config
+          command: config/ci/download_play_config.sh
+      - run:
+          name: Download Dependencies
+          command: ./gradlew androidDependencies
+      - run:
+          name: Build and deploy
+          command: ./gradlew assembleRelease
+      - store_artifacts:
+          path: tv/build/outputs/apk/release/
+          destination: apk/tv
+      - store_artifacts:
+          path: mobile/build/outputs/apk/release/
+          destination: apk/mobile
+
+  play_store_internal:
+    working_directory: ~/code
+    docker:
+      - image: circleci/android:api-28-alpha
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+      GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError"'
+    steps:
+      - checkout
+      - run:
+          name: Set signing key
+          command: config/ci/download_keystore.sh
+      - run:
+          name: Set play store config
+          command: config/ci/download_play_config.sh
+      - run:
+          name: Download Dependencies
+          command: ./gradlew androidDependencies
+      - run:
+          name: Build and deploy
+          command: ./gradlew playUploadInternal
+      - store_artifacts:
+          path: tv/build/outputs/apk/release/
+          destination: apk/tv
+      - store_artifacts:
+          path: mobile/build/outputs/apk/release/
+          destination: apk/mobile
+
+workflows:
+  version: 2
+  build_deploy:
+    jobs:
+      - build
+      - release_artifacts:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - release
+      - play_store_internal:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - master
+

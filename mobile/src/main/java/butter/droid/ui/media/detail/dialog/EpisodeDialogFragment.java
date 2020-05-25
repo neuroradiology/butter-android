@@ -21,8 +21,8 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.text.TextUtils;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
@@ -33,8 +33,16 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import java.util.Collections;
+import java.util.List;
+
+import javax.inject.Inject;
+
+import androidx.fragment.app.DialogFragment;
 import butter.droid.R;
 import butter.droid.base.content.preferences.PreferencesHandler;
+import butter.droid.base.manager.internal.glide.GlideApp;
 import butter.droid.base.manager.internal.media.MediaDisplayManager;
 import butter.droid.base.manager.internal.provider.ProviderManager;
 import butter.droid.base.providers.media.model.MediaMeta;
@@ -45,10 +53,7 @@ import butter.droid.base.providers.subs.model.SubtitleWrapper;
 import butter.droid.base.torrent.Magnet;
 import butter.droid.base.utils.PixelUtils;
 import butter.droid.provider.base.model.Episode;
-import butter.droid.provider.base.model.Format;
 import butter.droid.provider.base.model.Torrent;
-import butter.droid.ui.media.detail.dialog.subs.SubsPickerDialog;
-import butter.droid.ui.media.detail.dialog.subs.SubsPickerDialog.SubsPickerCallback;
 import butter.droid.ui.media.detail.model.UiSubItem;
 import butter.droid.ui.media.detail.streamable.dialog.SynopsisDialogFragment;
 import butter.droid.widget.BottomSheetScrollView;
@@ -57,7 +62,6 @@ import butter.droid.widget.OptionSelector;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import com.squareup.picasso.Picasso;
 import dagger.android.support.DaggerAppCompatDialogFragment;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -65,15 +69,12 @@ import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
-import java.util.Collections;
-import java.util.List;
-import javax.inject.Inject;
 
 /**
  * @deprecated Use {@link butter.droid.ui.media.detail.streamable.StreamableDetailFragment} instead.
  */
 @Deprecated
-public class EpisodeDialogFragment extends DaggerAppCompatDialogFragment implements SubsPickerCallback {
+public class EpisodeDialogFragment extends DaggerAppCompatDialogFragment {
 
     private static final String EXTRA_MEDIA_META = "butter.droid.ui.media.detail.dialog.EpisodeDialogFragment.mediaMeta";
     private static final String EXTRA_EPISODE = "butter.droid.ui.media.detail.dialog.EpisodeDialogFragment.episode";
@@ -111,7 +112,7 @@ public class EpisodeDialogFragment extends DaggerAppCompatDialogFragment impleme
     @BindView(R.id.quality) OptionSelector quality;
     @BindView(R.id.magnet) @Nullable ImageButton openMagnet;
 
-    private android.support.v4.app.DialogFragment subsDialog;
+    private DialogFragment subsDialog;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -230,18 +231,18 @@ public class EpisodeDialogFragment extends DaggerAppCompatDialogFragment impleme
 
         quality.setFragmentManager(getFragmentManager());
 
-        final Format[] formats = mediaDisplayManager.getSortedTorrentFormats(episode.getTorrents());
-        String[] formatDisplay = new String[formats.length];
-        for (int i = 0; i < formats.length; i++) {
-            formatDisplay[i] = mediaDisplayManager.getFormatDisplayName(formats[i]);
-        }
-        quality.setData(formatDisplay);
+//        final Format[] formats = mediaDisplayManager.getSortedTorrents(episode.getTorrents());
+//        String[] formatDisplay = new String[formats.length];
+//        for (int i = 0; i < formats.length; i++) {
+//            formatDisplay[i] = mediaDisplayManager.getFormatDisplayName(formats[i]);
+//        }
+//        quality.setData(formatDisplay);
 
-        int defaultFormatIndex = mediaDisplayManager.getDefaultFormatIndex(formats);
-//        // TODO: 7/30/17 Handle sorting
-        selectedTorrent = episode.getTorrents()[defaultFormatIndex];
-        this.quality.setText(formatDisplay[defaultFormatIndex]);
-        this.quality.setDefault(defaultFormatIndex);
+//        int defaultFormatIndex = mediaDisplayManager.getDefaultFormatIndex(formats);
+////        // TODO: 7/30/17 Handle sorting
+//        selectedTorrent = episode.getTorrents()[defaultFormatIndex];
+//        this.quality.setText(formatDisplay[defaultFormatIndex]);
+//        this.quality.setDefault(defaultFormatIndex);
 
         updateMagnet();
 
@@ -350,7 +351,7 @@ public class EpisodeDialogFragment extends DaggerAppCompatDialogFragment impleme
 //                        Picasso.with(headerImage.getContext()).load(imageUrl).into(headerImage);
 //                    });
         } else {
-            Picasso.with(headerImage.getContext()).load(episode.getBackdrop()).into(headerImage);
+            GlideApp.with(this).load(episode.getBackdrop()).into(headerImage);
         }
     }
 
@@ -392,33 +393,33 @@ public class EpisodeDialogFragment extends DaggerAppCompatDialogFragment impleme
         smoothDismiss();
     }
 
-    @Override public void onSubsItemSelected(final int position, final UiSubItem item) {
-        UiSubItem selectedSub = this.selectedSub;
-        if (selectedSub != null) {
-            selectedSub.setSelected(false);
-        }
-
-        this.selectedSub = item;
-        item.setSelected(true);
-
-        String language = item.getLanguage();
-        // TODO
-//        parentPresenter.selectSubtitle(item.getSubtitle());
-
-        if (language == null) {
-            subtitlesPreview.setText(R.string.no_subs);
-        } else {
-            subtitlesPreview.setText(item.getName());
-        }
-
-        subsDialog.dismiss();
-        subsDialog = null;
-    }
+//    @Override public void onSubsItemSelected(final UiSubItem item) {
+//        UiSubItem selectedSub = this.selectedSub;
+//        if (selectedSub != null) {
+//            selectedSub.setSelected(false);
+//        }
+//
+//        this.selectedSub = item;
+//        item.setSelected(true);
+//
+//        String language = item.getLanguage();
+//        // TODO
+////        parentPresenter.selectSubtitle(item.getSubtitle());
+//
+//        if (language == null) {
+//            subtitlesPreview.setText(R.string.no_subs);
+//        } else {
+//            subtitlesPreview.setText(item.getName());
+//        }
+//
+//        subsDialog.dismiss();
+//        subsDialog = null;
+//    }
 
     private void showSubsPickerDialog() {
-        SubsPickerDialog dialog = SubsPickerDialog.newInstance(subtitleList);
-        dialog.show(getChildFragmentManager(), "dialog");
-        subsDialog = dialog;
+//        SubsPickerDialog dialog = SubsPickerDialog.newInstance(subtitleList);
+//        dialog.show(getChildFragmentManager(), "dialog");
+//        subsDialog = dialog;
     }
 
     private void updateMagnet() {

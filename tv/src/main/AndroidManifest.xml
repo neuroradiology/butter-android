@@ -171,7 +171,6 @@
         <activity android:name=".ui.update.TVUpdateActivity" android:theme="@style/Theme.Butter.TV.GuidedStep" />
         <activity android:name=".ui.trailer.TVTrailerPlayerActivity" />
 
-      <service android:name="butter.droid.base.torrent.TorrentService" />
         <service android:name="butter.droid.tv.service.RecommendationService" android:enabled="true" />
 
         <receiver
@@ -183,11 +182,10 @@
             </intent-filter>
         </receiver>
 
-        <provider android:authorities="butter.droid.tv.RecommendationContentProvider"
+        <provider
+            android:authorities="${applicationId}.RecommendationContentProvider"
             android:name="butter.droid.tv.service.recommendation.RecommendationContentProvider"
             android:exported="true" />
-
-        <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version" />
     </application>
 
 </manifest>

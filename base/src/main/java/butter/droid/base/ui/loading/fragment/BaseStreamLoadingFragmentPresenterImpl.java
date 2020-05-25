@@ -18,6 +18,11 @@
 package butter.droid.base.ui.loading.fragment;
 
 import android.content.Context;
+
+import org.butterproject.torrentstream.StreamStatus;
+import org.butterproject.torrentstream.Torrent;
+import org.butterproject.torrentstream.listeners.TorrentListener;
+
 import butter.droid.base.R;
 import butter.droid.base.manager.internal.beaming.server.BeamServer;
 import butter.droid.base.manager.internal.beaming.server.BeamServerService;
@@ -31,9 +36,6 @@ import butter.droid.base.ui.loading.fragment.BaseStreamLoadingFragment.State;
 import butter.droid.base.utils.StringUtils;
 import butter.droid.base.utils.ThreadUtils;
 import butter.droid.provider.subs.SubsProvider;
-import com.github.se_bastiaan.torrentstream.StreamStatus;
-import com.github.se_bastiaan.torrentstream.Torrent;
-import com.github.se_bastiaan.torrentstream.listeners.TorrentListener;
 import io.reactivex.MaybeObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.Nullable;
@@ -87,6 +89,13 @@ public abstract class BaseStreamLoadingFragmentPresenterImpl implements BaseStre
         }
     }
 
+    @Override public void onDestroy() {
+        final Disposable d = this.subtitleDisposable;
+        if (d != null) {
+            d.dispose();
+        }
+    }
+
     /**
      * Starts the torrent service streaming a torrent url
      */
@@ -104,12 +113,16 @@ public abstract class BaseStreamLoadingFragmentPresenterImpl implements BaseStre
     }
 
     @Override public void onStreamError(Torrent torrent, Exception e) {
-        if (e.getMessage().equals("Write error")) {
-            setState(State.ERROR, context.getString(R.string.error_files));
-        } else if (e.getMessage().equals("Torrent error")) {
-            setState(State.ERROR, context.getString(R.string.torrent_failed));
-        } else {
-            setState(State.ERROR, context.getString(R.string.unknown_error));
+        switch (e.getMessage()) {
+            case "Write error":
+                setState(State.ERROR, context.getString(R.string.error_files));
+                break;
+            case "Torrent error":
+                setState(State.ERROR, context.getString(R.string.torrent_failed));
+                break;
+            default:
+                setState(State.ERROR, context.getString(R.string.unknown_error));
+                break;
         }
     }
 
@@ -205,7 +218,7 @@ public abstract class BaseStreamLoadingFragmentPresenterImpl implements BaseStre
     private void loadSubtitles() {
         MediaWrapper media = streamInfo.getMedia();
         SubsProvider subsProvider = providerManager.getSubsProvider(media.getProviderId());
-        SubtitleWrapper subtitle = streamInfo.getSubtitle();
+        final SubtitleWrapper subtitle = streamInfo.getSubtitle();
 
         subtitleManager.downloadSubtitle(subsProvider, media.getMedia(), subtitle)
                 .observeOn(AndroidSchedulers.mainThread())
@@ -216,6 +229,7 @@ public abstract class BaseStreamLoadingFragmentPresenterImpl implements BaseStre
 
                     @Override public void onSuccess(final SubtitleWrapper wrapper) {
                         subtitleDisposable = null;
+                        streamInfo.setSubtitle(wrapper);
                         startPlayer();
                     }
 
@@ -240,16 +254,7 @@ public abstract class BaseStreamLoadingFragmentPresenterImpl implements BaseStre
         }
 
         String progressText = progress + "%";
-
-        String speedText;
-        if (status.downloadSpeed / 1024 < 1000) {
-            int i = (int) (status.downloadSpeed / 102.4);
-            speedText = i / 10 + "." + i % 10 + " KB/s";
-        } else {
-            int i = (int) (status.downloadSpeed / 104857.6);
-            speedText = i / 10 + "." + i % 10 + " MB/s";
-        }
-
+        String speedText = StringUtils.formatSpeed(status.downloadSpeed);
         String seedsText = status.seeds + " " + context.getString(R.string.seeds);
 
         view.displayDetails(progress, progressText, speedText, seedsText);

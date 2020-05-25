@@ -23,24 +23,35 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
-import android.support.annotation.ColorInt;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.StringRes;
-import android.support.design.widget.Snackbar;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import com.google.android.material.snackbar.Snackbar;
+import androidx.fragment.app.FragmentActivity;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.sothree.slidinguppanel.SlidingUpPanelLayout;
+
+import org.butterproject.torrentstream.StreamStatus;
+import org.butterproject.torrentstream.Torrent;
+import org.butterproject.torrentstream.listeners.TorrentListener;
+
+import javax.inject.Inject;
+
 import butter.droid.R;
 import butter.droid.base.manager.internal.beaming.BeamPlayerNotificationService;
+import butter.droid.base.manager.internal.glide.GlideApp;
 import butter.droid.base.providers.media.model.StreamInfo;
-import butter.droid.base.utils.AnimUtils;
 import butter.droid.base.utils.PixelUtils;
 import butter.droid.base.utils.VersionUtils;
 import butter.droid.ui.beam.fragment.dialog.LoadingBeamingDialogFragment;
@@ -49,14 +60,7 @@ import butter.droid.widget.SeekBar;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import com.github.se_bastiaan.torrentstream.StreamStatus;
-import com.github.se_bastiaan.torrentstream.Torrent;
-import com.github.se_bastiaan.torrentstream.listeners.TorrentListener;
-import com.sothree.slidinguppanel.SlidingUpPanelLayout;
-import com.squareup.picasso.Callback;
-import com.squareup.picasso.Picasso;
 import dagger.android.support.DaggerFragment;
-import javax.inject.Inject;
 
 public class BeamPlayerFragment extends DaggerFragment implements BeamPlayerView, TorrentListener {
 
@@ -92,7 +96,7 @@ public class BeamPlayerFragment extends DaggerFragment implements BeamPlayerView
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return rootView = inflater.inflate(R.layout.fragment_beamplayer, container, false);
     }
 
@@ -186,17 +190,11 @@ public class BeamPlayerFragment extends DaggerFragment implements BeamPlayerView
     }
 
     @Override public void loadCoverImage(@NonNull final String imageUrl) {
-        Picasso.with(coverImage.getContext()).load(imageUrl)
-                .into(coverImage, new Callback() {
-                    @Override
-                    public void onSuccess() {
-                        AnimUtils.fadeIn(coverImage);
-                    }
-
-                    @Override
-                    public void onError() {
-                    }
-                });
+        GlideApp.with(this)
+                .asDrawable()
+                .load(imageUrl)
+                .transition(DrawableTransitionOptions.withCrossFade())
+                .into(coverImage);
     }
 
     @Override public void hideSeekBar() {
@@ -264,7 +262,8 @@ public class BeamPlayerFragment extends DaggerFragment implements BeamPlayerView
     }
 
     @Override public void startNotificationService(final boolean isPlaying) {
-        getActivity().startService(BeamPlayerNotificationService.getIntent(getContext(), isPlaying));
+        FragmentActivity activity = requireActivity();
+        activity.startService(BeamPlayerNotificationService.getIntent(activity, isPlaying));
     }
 
     private void tintProgressDrawable(@ColorInt final int paletteColor) {

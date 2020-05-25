@@ -18,6 +18,7 @@
 package butter.droid.ui.player.abs;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
@@ -25,16 +26,17 @@ import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.CallSuper;
-import android.support.annotation.Nullable;
-import android.support.v4.content.ContextCompat;
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaControllerCompat.Callback;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -50,10 +52,14 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+
+import javax.inject.Inject;
+
 import butter.droid.R;
 import butter.droid.base.BuildConfig;
 import butter.droid.base.manager.internal.vlc.VlcPlayer;
 import butter.droid.base.ui.player.base.BaseVideoPlayerView;
+import butter.droid.base.ui.player.stream.StreamPlayerPresenterImpl;
 import butter.droid.base.utils.AnimUtils;
 import butter.droid.base.utils.LocaleUtils;
 import butter.droid.base.utils.PixelUtils;
@@ -64,13 +70,13 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import dagger.android.support.DaggerFragment;
-import javax.inject.Inject;
 
 public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, BaseVideoPlayerView, OnSystemUiVisibilityChangeListener {
 
     protected static final String ARG_RESUME_POSITION = "butter.droid.ui.player.abs.AbsPlayerFragment.resumePosition";
 
     private static final String ACTION_SCALE = "butter.droid.ui.player.abs.action.SCALE";
+    protected static final String ACTION_CLOSE_CAPTION = "butter.droid.tv.ui.player.video.action.CLOSE_CAPTION";
 
     private static final int FADE_OUT_INFO = 1000;
 
@@ -87,6 +93,8 @@ public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, 
     @BindView(R.id.play_button) ImageButton playButton;
     @BindView(R.id.forward_button) ImageButton forwardButton;
     @BindView(R.id.rewind_button) ImageButton rewindButton;
+    @BindView(R.id.subs_button) ImageButton subsButton;
+    @BindView(R.id.scale_button) ImageButton scaleButton;
     @BindView(R.id.player_info) TextView playerInfo;
     @BindView(R.id.current_time) TextView currentTimeTextView;
     @BindView(R.id.length_time) TextView lengthTime;
@@ -105,28 +113,23 @@ public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, 
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
 
-        mediaSession = new MediaSessionCompat(getContext(), BuildConfig.APPLICATION_ID);
+        mediaSession = new MediaSessionCompat(requireContext(), BuildConfig.APPLICATION_ID);
         mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
         mediaSession.setMediaButtonReceiver(null);
         mediaSession.setCallback(new PlayerSessionCallback());
 
-        stateBuilder = new PlaybackStateCompat.Builder()
-                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE
-                        | PlaybackStateCompat.ACTION_REWIND
-                        | PlaybackStateCompat.ACTION_FAST_FORWARD
-                        | PlaybackStateCompat.ACTION_SEEK_TO)
-                .addCustomAction(ACTION_SCALE, getString(R.string.scale), R.drawable.ic_av_aspect_ratio);
+        stateBuilder = new PlaybackStateCompat.Builder();
 
         metadataBuilder = new MediaMetadataCompat.Builder();
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_videoplayer, container, false);
     }
 
     @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         view.setOnTouchListener(touchHandler);
         ButterKnife.bind(this, view);
@@ -165,7 +168,7 @@ public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, 
         presenter.onPause();
     }
 
-    @Override public void onSaveInstanceState(final Bundle outState) {
+    @Override public void onSaveInstanceState(@NonNull final Bundle outState) {
         super.onSaveInstanceState(outState);
 
         presenter.onSaveInstanceState(outState);
@@ -213,16 +216,53 @@ public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, 
         }
     }
 
-    @CallSuper @Override public void setupControls(final String title) {
+    @CallSuper @Override public void setupControls(String title, int actions) {
         mediaController = new MediaControllerCompat(getContext(), mediaSession);
         mediaController.registerCallback(controllerCallback);
 
         MediaControllerCompat.setMediaController(getActivity(), mediaController);
 
+
+        long stateActions = PlaybackStateCompat.ACTION_PLAY_PAUSE | PlaybackStateCompat.ACTION_SEEK_TO;
+        if ((actions & StreamPlayerPresenterImpl.PLAYER_ACTION_SKIP_NEXT) > 0) {
+            stateActions |= PlaybackStateCompat.ACTION_FAST_FORWARD;
+            forwardButton.setVisibility(View.VISIBLE);
+        } else {
+            forwardButton.setVisibility(View.GONE);
+        }
+
+        if ((actions & StreamPlayerPresenterImpl.PLAYER_ACTION_SKIP_PREVIOUS) > 0) {
+            stateActions |= PlaybackStateCompat.ACTION_REWIND;
+            rewindButton.setVisibility(View.VISIBLE);
+        } else {
+            rewindButton.setVisibility(View.GONE);
+        }
+
+        stateBuilder.setActions(stateActions);
+
+        if ((actions & StreamPlayerPresenterImpl.PLAYER_ACTION_CC) > 0) {
+            stateBuilder.addCustomAction(ACTION_CLOSE_CAPTION, getString(R.string.subtitles), R.drawable.ic_av_subs);
+            subsButton.setVisibility(View.VISIBLE);
+        } else {
+            subsButton.setVisibility(View.GONE);
+
+        }
+
+        if ((actions & StreamPlayerPresenterImpl.PLAYER_ACTION_SCALE) > 0) {
+            stateBuilder.addCustomAction(ACTION_SCALE, getString(R.string.scale), R.drawable.ic_av_aspect_ratio);
+            scaleButton.setVisibility(View.VISIBLE);
+        } else {
+            scaleButton.setVisibility(View.GONE);
+        }
+
         mediaSession.setPlaybackState(stateBuilder.build());
 
         metadataBuilder.putText(MediaMetadataCompat.METADATA_KEY_TITLE, title);
         mediaSession.setMetadata(metadataBuilder.build());
+
+        // TODO actions visibility by glue host
+        // TODO actions
+
     }
 
     @Override public void attachVlcViews() {
@@ -336,6 +376,10 @@ public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, 
         mediaController.getTransportControls().sendCustomAction(ACTION_SCALE, null);
     }
 
+    @OnClick(R.id.subs_button) void onSubsClick() {
+        mediaController.getTransportControls().sendCustomAction(ACTION_CLOSE_CAPTION, null);
+    }
+
     protected void showPlayerInfo(String text) {
         playerInfo.setVisibility(View.VISIBLE);
         playerInfo.setText(text);
@@ -368,23 +412,23 @@ public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR2) {
             getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
             getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
-            int statusBarHeight = PixelUtils.getStatusBarHeight(getActivity());
-            toolbar.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT,
-                    getResources().getDimensionPixelSize(R.dimen.abc_action_bar_default_height_material) + statusBarHeight));
-            toolbar.setPadding(toolbar.getPaddingLeft(), statusBarHeight, toolbar.getPaddingRight(), toolbar.getPaddingBottom());
+            int statusBarHeight = PixelUtils.getStatusBarHeight(requireContext());
+            int navigationBarHeight = PixelUtils.getNavigationBarHeight(requireContext());
+            toolbar.setPadding(toolbar.getPaddingLeft(), statusBarHeight, navigationBarHeight, toolbar.getPaddingBottom());
         }
     }
 
     private void setupDecorView() {
-        decorView = getActivity().getWindow().getDecorView();
+        decorView = requireActivity().getWindow().getDecorView();
         decorView.setOnSystemUiVisibilityChangeListener(this);
     }
 
     private void setupProgressBar() {
-        int color = ContextCompat.getColor(getContext(), R.color.primary);
+        Context context = requireContext();
+        int color = ContextCompat.getColor(context, R.color.primary);
         LayerDrawable progressDrawable;
         if (!VersionUtils.isLollipop()) {
-            progressDrawable = (LayerDrawable) ContextCompat.getDrawable(getContext(), R.drawable.scrubber_progress_horizontal);
+            progressDrawable = (LayerDrawable) ContextCompat.getDrawable(context, R.drawable.scrubber_progress_horizontal);
         } else {
             if (controlBar.getProgressDrawable() instanceof StateListDrawable) {
                 StateListDrawable stateListDrawable = (StateListDrawable) controlBar.getProgressDrawable();
@@ -496,16 +540,8 @@ public class AbsPlayerFragment extends DaggerFragment implements AbsPlayerView, 
             presenter.pause();
         }
 
-        @Override public void onFastForward() {
-            presenter.seekForwardClick();
-        }
-
-        @Override public void onRewind() {
-            presenter.seekBackwardClick();
-        }
-
         @Override public void onSeekTo(final long pos) {
-            presenter.onProgressChanged((int) pos);
+            presenter.seekTo(pos);
         }
 
         @Override public void onCustomAction(final String action, final Bundle extras) {
